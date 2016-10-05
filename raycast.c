@@ -181,6 +181,7 @@ struct ObjectInfo read_scene(FILE* json) {
 
       char* value = next_string(json);
       object.objectNumber += 1;
+      object.objectArray =realloc(object.objectArray, sizeof(Object)*object.objectNumber);
       object.objectArray[object.objectNumber-1].type = value;
 
       if (strcmp(value, "camera") == 0) {
@@ -313,19 +314,20 @@ double planeintersection(double* Ro, double* Rd, double* position, double* norma
   return final;
 }
 
-void ppmprint(ImageData *image, FILE* input, int ppmmagicnumber){
+void ppmprint(ImageData *image, FILE* outputfile, int ppmmagicnumber){
   size_t number;
   int imagesize = image->width*image->height*4;
   if (ppmmagicnumber == 6){
+    fprintf(outputfile, "P%d\n%lf %lf\n%d\n", ppmmagicnumber, image->width, image->height, 255);
     int i;
     for(i=0; i<imagesize; i++){
       char c = image->color[i];
       if(i%4 !=0){
-        fwrite(&c, 1, 1, input);
+        fwrite(&c, 1, 1, outputfile);
       }
     }
   }
-  fclose(input);
+  fclose(outputfile);
 }
 
 double sphereintersection(double* Ro, double* Rd, double* C, double radius){
@@ -428,17 +430,19 @@ int main(int argc, char *argv[]) {
 
   //create object?
 
+  ObjectInfo object;
+
   int objectsnumber;
-  int camerakind = 0;
+
   double cameraheight;
   double camerawidth;
 
-  int spherekind = 1;
+
   double spherecolorR, spherecolorG, spherecolorB;
   double sphereposX, sphereposY, sphereposZ;
   double radius;
 
-  int planekind = 2;
+
   double planecolorR, planecolorG, planecolorB;
   double planeposX, planeposY, planeposZ;
   double planenormX, planenormY, planenormZ;
@@ -446,7 +450,7 @@ int main(int argc, char *argv[]) {
   int M = atoi(argv[1]);
   int N = atoi(argv[2]);
 
-  ObjectInfo object;
+
   object = read_scene(json);
 
   objectsnumber = object.objectNumber;
@@ -518,6 +522,7 @@ int main(int argc, char *argv[]) {
         printf("\n");
       }
 
-      FILE* output = fopen(argv[4], "w");
+      FILE* output = fopen(argv[4], "w+");
+
       ppmprint(image, output, ppmmagicnumber);
 }
