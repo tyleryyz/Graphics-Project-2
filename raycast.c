@@ -280,7 +280,7 @@ static inline double sqr(double v) {
 
 
 
-static inline void normalize(double* v) {
+static void normalize(double* v) {
   double len = sqrt(sqr(v[0]) + sqr(v[1]) + sqr(v[2]));
   v[0] /= len;
   v[1] /= len;
@@ -288,15 +288,14 @@ static inline void normalize(double* v) {
 }
 
 void shade_pixel(double *color, int row, int col, ImageData *image){
-  image->color[(int)(row*image->width*4 + col*4)] = (char)color[0];
-  image->color[(int)(row*image->width*4 + col*4+1)] = (char)color[1];
-  image->color[(int)(row*image->width*4 + col*4+2)] = (char)color[2];
-  image->color[(int)(row*image->width*4 + col*4+3)] = 255;
+  image->color[(int)(row*image->width*3 + col*3)] = (char)(color[0]*255);
+  image->color[(int)(row*image->width*3 + col*3+1)] = (char)(color[1]*255);
+  image->color[(int)(row*image->width*3 + col*3+2)] = (char)(color[2]*255);
 }
 
 double planeintersection(double* Ro, double* Rd, double* position, double* normal){
   double val = (normal[0]* Rd[0])+(normal[1]* Rd[1])+(normal[2]*Rd[2]);
-  if(fabs(val)< 0.0001){
+  if(fabs(val)< .0001){
     return -1;
   }
   double secval[3];
@@ -314,15 +313,17 @@ double planeintersection(double* Ro, double* Rd, double* position, double* norma
   return final;
 }
 
+
 void ppmprint(ImageData *image, FILE* outputfile, int ppmmagicnumber){
   size_t number;
-  int imagesize = image->width*image->height*4;
+  
+  int imagesize = image->width*image->height*3;
   if (ppmmagicnumber == 6){
     fprintf(outputfile, "P%d\n%lf %lf\n%d\n", ppmmagicnumber, image->width, image->height, 255);
     int i;
     for(i=0; i<imagesize; i++){
       char c = image->color[i];
-      if(i%4 !=0){
+      if(i%3 !=0){
         fwrite(&c, 1, 1, outputfile);
       }
     }
@@ -331,9 +332,9 @@ void ppmprint(ImageData *image, FILE* outputfile, int ppmmagicnumber){
 }
 
 double sphereintersection(double* Ro, double* Rd, double* C, double radius){
-  double val = (sqr(Rd[0]) + sqr(Rd[1]) +sqr(Rd[2]));
-  double secval = 2*(Rd[0]*(Ro[0]-C[0])+Rd[1]*(Ro[1]-C[1])+Rd[2]*(Ro[2]-C[2]));
-  double thirdval = sqr(Ro[0]-C[0])+sqr(Ro[1]-C[1])+sqr(Ro[2]-C[2])-sqr(radius);
+  double val = (sqr(Rd[0]) + sqr(Rd[1]) + sqr(Rd[2]));
+  double secval = 2 * (Rd[0]*(Ro[0]-C[0]) + Rd[1]*(Ro[1]-C[1]) + Rd[2]*(Ro[2]-C[2]));
+  double thirdval = sqr(Ro[0]-C[0]) + sqr(Ro[1]-C[1]) + sqr(Ro[2]-C[2]) - sqr(radius);
 
   double det = sqr(secval) - 4 * val * thirdval;
 
@@ -428,7 +429,7 @@ int main(int argc, char *argv[]) {
   if (atoi(argv[2]) <= 0){
     fprintf(stderr, "error: height must be greater than 0");
   }
-  
+
   FILE* json = fopen(argv[3], "rb");
 
   if (json == NULL) {
@@ -502,9 +503,11 @@ int main(int argc, char *argv[]) {
 
 	        if(object.objectArray[i].sphere.position && object.objectArray[i].sphere.radius){
             t = sphereintersection(Ro, Rd, object.objectArray[i].sphere.position, object.objectArray[i].sphere.radius);
+
           }
           else if(object.objectArray[i].plane.position && object.objectArray[i].plane.normal){
             t = planeintersection(Ro, Rd, object.objectArray[i].plane.position, object.objectArray[i].plane.normal);
+
           }
           if (t>0 && t < best_t){
             best_t = t;
