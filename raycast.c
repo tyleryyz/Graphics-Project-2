@@ -3,6 +3,41 @@
 #include <string.h>
 #include <math.h>
 
+
+typedef struct {
+  char *type; // 0 = cylinder, 1 = sphere, 2 = teapot
+  double color[3];
+  union {
+    struct {
+      double width;
+      double height;
+    } camera;
+    struct {
+      double position[3];
+      double radius;
+    } sphere;
+    struct {
+      double position[3];
+      double normal[3];
+    } plane;
+  };
+} Object;
+
+typedef struct {
+  double origin[3];
+  double dir[3];
+}ray;
+
+
+
+
+typedef struct ObjectInfo{
+  Object *objectArray;
+  size_t objectNumber;
+} ObjectInfo;
+
+struct ObjectInfo read_scene(FILE* json);
+
 int line = 1;
 
 // next_c() wraps the getc() function and provides error checking and line
@@ -101,14 +136,11 @@ double* next_vector(FILE* json) {
 }
 
 
-void read_scene(char* filename) {
+struct ObjectInfo read_scene(FILE* json) {
   int c;
-  FILE* json = fopen(filename, "r");
-
-  if (json == NULL) {
-    fprintf(stderr, "Error: Could not open file \"%s\"\n", filename);
-    exit(1);
-  }
+  ObjectInfo object;
+  object.objectArray = NULL;
+  object.objectNumber = 0;
 
   skip_ws(json);
 
@@ -132,8 +164,8 @@ void read_scene(char* filename) {
       // Parse the object
       char* key = next_string(json);
       if (strcmp(key, "type") != 0) {
-	fprintf(stderr, "Error: Expected \"type\" key on line number %d.\n", line);
-	exit(1);
+	       fprintf(stderr, "Error: Expected \"type\" key on line number %d.\n", line);
+	        exit(1);
       }
 
       skip_ws(json);
@@ -143,83 +175,98 @@ void read_scene(char* filename) {
       skip_ws(json);
 
       char* value = next_string(json);
+      object.objectNumber += 1;
+      object.objectArray[object.objectNumber-1].type = value;
 
       if (strcmp(value, "camera") == 0) {
       } else if (strcmp(value, "sphere") == 0) {
       } else if (strcmp(value, "plane") == 0) {
       } else {
-	fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
-	exit(1);
+	       fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
+	        exit(1);
       }
 
       skip_ws(json);
 
       while (1) {
-	// , }
-	c = next_c(json);
-	if (c == '}') {
+        c = next_c(json);
+        if (c == '}') {
 	  // stop parsing this object
-	  break;
-	} else if (c == ',') {
-	  // read another field
-	  skip_ws(json);
-	  char* key = next_string(json);
-	  skip_ws(json);
-	  expect_c(json, ':');
-	  skip_ws(json);
-	  if ((strcmp(key, "width") == 0) ||
-	      (strcmp(key, "height") == 0) ||
-	      (strcmp(key, "radius") == 0)) {
-	    double value = next_number(json);
-	  } else if ((strcmp(key, "color") == 0) ||
-		     (strcmp(key, "position") == 0) ||
-		     (strcmp(key, "normal") == 0)) {
-	    double* value = next_vector(json);
-	  } else {
-	    fprintf(stderr, "Error: Unknown property, \"%s\", on line %d.\n",
-		    key, line);
-	    //char* value = next_string(json);
-	  }
-	  skip_ws(json);
-	} else {
-	  fprintf(stderr, "Error: Unexpected value on line %d\n", line);
-	  exit(1);
-	}
-      }
-      skip_ws(json);
-      c = next_c(json);
-      if (c == ',') {
-	// noop
-	skip_ws(json);
-      } else if (c == ']') {
-	fclose(json);
-	return;
-      } else {
-	fprintf(stderr, "Error: Expecting ',' or ']' on line %d.\n", line);
-	exit(1);
+          break;
+  	     }
+         else if (c == ',') {
+  	  // read another field
+          skip_ws(json);
+  	      char* key = next_string(json);
+  	      skip_ws(json);
+  	      expect_c(json, ':');
+  	      skip_ws(json);
+  	  if ((strcmp(key, "width") == 0) ||
+  	      (strcmp(key, "height") == 0) ||
+  	      (strcmp(key, "radius") == 0)) {
+  	    double value = next_number(json);
+        if (value <= 0){
+          fprintf(stderr, "Error: Width, Height, Radius must be greater than 0");
+          exit(1);
+        }
+        else {
+          if (strcmp(key, "width") == 0){
+            object.objectArray[object.objectNumber-1].camera.width = value;
+          }
+          else if (strcmp(key, "height") == 0){
+              object.objectArray[object.objectNumber-1].camera.height = value;
+          }
+ 		     else if (strcmp(key, "radius") == 0){
+              object.objectArray[object.objectNumber-1].sphere.radius = value;
+          }
+        }
+  	   }
+
+       else if ((strcmp(key, "color")==0)||(strcmp(key, "position")==0)||(strcmp(key, "normal")==0)){
+          double* value = next_vector(json);
+
+          if((strcmp(key, "color")==0)){
+            object.objectArray[object.objectNumber-1].color[0]=value[0];
+            object.objectArray[object.objectNumber-1].color[1]=value[1];
+            object.objectArray[object.objectNumber-1].color[2]=value[2];
+          }
+          else if((strcmp(key, "position")==0)){
+            object.objectArray[object.objectNumber-1].sphere.position[0]=value[0];
+            object.objectArray[object.objectNumber-1].sphere.position[1]=value[1];
+            object.objectArray[object.objectNumber-1].sphere.position[2]=value[2];
+          }
+          else if((strcmp(key, "normal")==0)){
+            object.objectArray[object.objectNumber-1].plane.normal[0]=value[0];
+            object.objectArray[object.objectNumber-1].plane.normal[1]=value[1];
+            object.objectArray[object.objectNumber-1].plane.normal[2]=value[2];
+          }
+       }
+      else {
+  	    fprintf(stderr, "Error: Unknown property, \"%s\", on line %d.\n",
+  		    key, line);
+  	    //char* value = next_string(json);
+  	  }
+  	  skip_ws(json);
+  	} else {
+  	  fprintf(stderr, "Error: Unexpected value on line %d\n", line);
+  	  exit(1);
+  	}
+        }
+        skip_ws(json);
+        c = next_c(json);
+        if (c == ',') {
+  	// noop
+  	skip_ws(json);
+        } else if (c == ']') {
+  	fclose(json);
+  	return;
+        } else {
+  	fprintf(stderr, "Error: Expecting ',' or ']' on line %d.\n", line);
+  	exit(1);
       }
     }
   }
 }
-
-typedef struct {
-  int kind; // 0 = cylinder, 1 = sphere, 2 = teapot
-  double color[3];
-  union {
-    struct {
-      double center[3];
-      double radius;
-    } cylinder;
-    struct {
-      double center[3];
-      double radius;
-    } sphere;
-    struct {
-      double handle_length;
-    } teapot;
-  };
-} Object;
-
 
 static inline double sqr(double v) {
   return v*v;
@@ -294,9 +341,21 @@ double cylinder_intersection(double* Ro, double* Rd,
   return -1;
 }
 
-int main(int c, char** argv) {
+int main(int argc, char** argv) {
+  if (argc != 5){
+    fprintf(stderr, "Usage: raycast width height input.json output.ppm");
+    return(1);
+  }
 
-  read_scene(argv[1]);
+  FILE* json = fopen(argv[3], "rb");
+
+  if (json == NULL) {
+    fprintf(stderr, "Error: Could not open file \"%s\"\n", argv[3]);
+    exit(1);
+  }
+
+  read_scene(json);
+
 
   Object** objects;
   objects = malloc(sizeof(Object*)*2);
