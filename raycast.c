@@ -397,67 +397,58 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Error: invalid camera width/height");
     exit(1);
   }
-/*
-  Object** objects;
-  objects = malloc(sizeof(Object*)*2);
-  objects[0] = malloc(sizeof(Object));
-  objects[0]->kind = 0;
-  objects[0]->cylinder.radius = 2;
-  // object[0]->teapot.handle_length = 2;
-  objects[0]->cylinder.center[0] = 0;
-  objects[0]->cylinder.center[1] = 0;
-  objects[0]->cylinder.center[2] = 20;
-  objects[1] = NULL;
 
-  double cx = 0;
-  double cy = 0;
-  double h = 0.7;
-  double w = 0.7;
+  double pixelheight = cameraheight / M;
+  double pixelwidth = camerawidth / N;
 
-  int M = 20;
-  int N = 20;
+  ImageData *image = (ImageData *)malloc(sizeof(Image));
+  image->height = N;
+  image->width = M;
+  image->color = (char *)malloc(sizeof(char) * image->height * image->width * 4);
 
-  double pixheight = h / M;
-  double pixwidth = w / N;
   int y;
   int x;
   for (y=0; y < M; y += 1) {
     for (x=0; x < N; x += 1) {
       double Ro[3] = {0, 0, 0};
       // Rd = normalize(P - Ro)
-      double Rd[3] = {
-	cx - (w/2) + pixwidth * (x + 0.5),
-	cy - (h/2) + pixheight * (y + 0.5),
-	1
-      };
+      double Rd[3] = {object.objectArray[i].sphere.position[0] -
+        (camerawidth/2) + pixwidth * (x + 0.5),
+        object.objectArray[i].sphere.position[1] -
+        (cameraheight/2) + pixelheight * (y+0.5), 1};
       normalize(Rd);
 
+      int helper = 0;
       double best_t = INFINITY;
-      int i;
-      for (i=0; objects[i] != 0; i += 1) {
-	double t = 0;
+      for (i=0; i<objectsnumber; i++) {
+	       double t = 0;
 
-	switch(objects[i]->kind) {
-	case 0:
-	  t = cylinder_intersection(Ro, Rd,
-				    objects[i]->cylinder.center,
-				    objects[i]->cylinder.radius);
-	  break;
-	default:
-	  // Horrible error
-	  exit(1);
-	}
-	if (t > 0 && t < best_t) best_t = t;
+	        if(object.objectArray[i].sphere.position && object.objectArray.sphere.radius){
+            t = sphereintersection(Ro, Rd, object.objectArray[i].sphere.position, object.objectArray[i].sphere.radius);
+          }
+          else if(object.objectArray[i].plane.position && object.objectArray.plane.normal){
+            t = planeintersection(Ro, Rd, object.objectArray[i].plane.position, object.objectArray[i].plane.normal);
+          }
+          if (t>0 && t < best_t){
+            best_t = t;
+            helper = i;
+          }
+        }
+        if (best_t > 0 && best_t != INFINITY) {
+          if (object.objectArray[helper].sphere.position && object.objectArray[helper].sphere.radius){
+            shade_pixel(object.objectArray[helper].color, y, x, image);
+          }
+          if (object.objectArray[helper].plane.position && object.objectArray[helper].plane.normal){
+            shade_pixel(object.objectArray[helper].color, y, x, image);
+          }
+  	       printf("#");
+         } else {
+  	        printf(".");
+          }
+        }
+        printf("\n");
       }
-      if (best_t > 0 && best_t != INFINITY) {
-	printf("#");
-      } else {
-	printf(".");
-      }
 
-    }
-    printf("\n");
-  }
-
-*/  return 0;
+      FILE* output = fopen(argv[4], "w");
+      ppmprint(image, output, ppmmagicnumber);
 }
