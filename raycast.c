@@ -313,6 +313,20 @@ double planeintersection(double* Ro, double* Rd, double* position, double* norma
   return final;
 }
 
+void ppmprint(ImageData *image, FILE* input, int ppmmagicnumber){
+  size_t number;
+  int imagesize = image->width*image->height*4;
+  if (ppmmagicnumber == 6){
+    int i;
+    for(i=0; i<imagesize; i++){
+      char c = image->color[i];
+      if(i%4 !=0){
+        fwrite(&c, 1, 1, input);
+      }
+    }
+  }
+  fclose(input);
+}
 
 double sphereintersection(double* Ro, double* Rd, double* C, double radius){
   double val = (sqr(Rd[0]) + sqr(Rd[1]) +sqr(Rd[2]));
@@ -400,12 +414,11 @@ double cylinder_intersection(double* Ro, double* Rd,
 }ObjectInfo
 */
 
-int main(int argc, char** argv) {
+int main(int argc, char *argv[]) {
   if (argc != 5){
     fprintf(stderr, "Usage: raycast width height input.json output.ppm");
     return(1);
   }
-  //TODO ERROR CHECKING MOTHERFUCKER
   FILE* json = fopen(argv[3], "rb");
 
   if (json == NULL) {
