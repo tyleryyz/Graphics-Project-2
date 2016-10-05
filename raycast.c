@@ -35,6 +35,12 @@ typedef struct ObjectInfo{
   size_t objectNumber;
 } ObjectInfo;
 
+typedef struct ImageData{
+  double width;
+  double height;
+  char* color;
+}ImageData;
+
 struct ObjectInfo read_scene(FILE* json);
 
 int line = 1;
@@ -280,9 +286,56 @@ static inline void normalize(double* v) {
   v[2] /= len;
 }
 
-void shade_pixel(double *color, int row, int col, )
+void shade_pixel(double *color, int row, int col, ImageData *image){
+  image->color[(int)(row*image->width*4 + col*4)] = (char)color[0];
+  image->color[(int)(row*image->width*4 + col*4+1)] = (char)color[1];
+  image->color[(int)(row*image->width*4 + col*4+2)] = (char)color[2];
+  image->color[(int)(row*image->width*4 + col*4+3)] = 255;
+}
+
+double planeintersection(double* Ro, double* Rd, double* position, double* normal){
+  double val = (normal[0]* Rd[0])+(normal[1]* Rd[1])+(normal[2]*Rd[2]);
+  if(fabs(val)< 0.0001){
+    return -1;
+  }
+  double secval[3];
+  int i;
+  for (i=0; i<=2; i++){
+    secval[i] = position[i]-Ro[i];
+  }
+
+  double thirdval = (secval[0]* normal[0])+(secval[1]* normal[1])+(secval[2]* normal[2]);
+  double final = thirdval/val;
+
+  if (final < 0){
+    return -1;
+  }
+  return final;
+}
 
 
+double sphereintersection(double* Ro, double* Rd, double* C, double radius){
+  double val = (sqr(Rd[0]) + sqr(Rd[1]) +sqr(Rd[2]));
+  double secval = 2*(Rd[0]*(Ro[0]-C[0])+Rd[1]*(Ro[1]-C[1])+Rd[2]*(Ro[2]-C[2]));
+  double thirdval = sqr(Ro[0]-C[0])+sqr(Ro[1]-C[1])+sqr(Ro[2]-C[2])-sqr(radius);
+
+  double det = sqr(secval) - 4 * val * thirdval;
+
+  if (det<0){
+    return -1;
+  }
+  det = sqrt(det);
+
+  double t1 = (-secval - det)/(2*val);
+  if (t1 > 0){
+    return t1;
+  }
+  double t2 = (-secval + det)/(2*val);
+  if (t1 >0){
+    return t2;
+  }
+  return -1;
+}
 
 
 /*
@@ -346,6 +399,7 @@ double cylinder_intersection(double* Ro, double* Rd,
   return -1;
 }ObjectInfo
 */
+
 int main(int argc, char** argv) {
   if (argc != 5){
     fprintf(stderr, "Usage: raycast width height input.json output.ppm");
@@ -360,6 +414,8 @@ int main(int argc, char** argv) {
   }
 
   //create object?
+
+  int objectsnumber;
   int camerakind = 0;
   double cameraheight;
   double camerawidth;
@@ -380,14 +436,14 @@ int main(int argc, char** argv) {
   ObjectInfo object;
   object = read_scene(json);
 
-  objectsnumber = object.objectnumber;
+  objectsnumber = object.objectNumber;
 
   int i;
 
   int ppmmagicnumber=6;
 
   for (i = 0; i < objectsnumber; i++){
-    if (object.objectArray[i].camera.width && objectArray[1].camera.height) {
+    if (object.objectArray[i].camera.width && object.objectArray[1].camera.height) {
       camerawidth = object.objectArray[i].camera.width;
       cameraheight = object.objectArray[i].camera.height;
     }
@@ -401,7 +457,7 @@ int main(int argc, char** argv) {
   double pixelheight = cameraheight / M;
   double pixelwidth = camerawidth / N;
 
-  ImageData *image = (ImageData *)malloc(sizeof(Image));
+  ImageData *image = (ImageData *)malloc(sizeof(ImageData));
   image->height = N;
   image->width = M;
   image->color = (char *)malloc(sizeof(char) * image->height * image->width * 4);
@@ -413,7 +469,7 @@ int main(int argc, char** argv) {
       double Ro[3] = {0, 0, 0};
       // Rd = normalize(P - Ro)
       double Rd[3] = {object.objectArray[i].sphere.position[0] -
-        (camerawidth/2) + pixwidth * (x + 0.5),
+        (camerawidth/2) + pixelwidth * (x + 0.5),
         object.objectArray[i].sphere.position[1] -
         (cameraheight/2) + pixelheight * (y+0.5), 1};
       normalize(Rd);
@@ -423,10 +479,10 @@ int main(int argc, char** argv) {
       for (i=0; i<objectsnumber; i++) {
 	       double t = 0;
 
-	        if(object.objectArray[i].sphere.position && object.objectArray.sphere.radius){
+	        if(object.objectArray[i].sphere.position && object.objectArray[i].sphere.radius){
             t = sphereintersection(Ro, Rd, object.objectArray[i].sphere.position, object.objectArray[i].sphere.radius);
           }
-          else if(object.objectArray[i].plane.position && object.objectArray.plane.normal){
+          else if(object.objectArray[i].plane.position && object.objectArray[i].plane.normal){
             t = planeintersection(Ro, Rd, object.objectArray[i].plane.position, object.objectArray[i].plane.normal);
           }
           if (t>0 && t < best_t){
