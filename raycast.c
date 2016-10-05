@@ -30,7 +30,6 @@ typedef struct {
 
 
 
-
 typedef struct ObjectInfo{
   Object *objectArray;
   size_t objectNumber;
@@ -156,7 +155,7 @@ struct ObjectInfo read_scene(FILE* json) {
     if (c == ']') {
       fprintf(stderr, "Error: This is the worst scene file EVER.\n");
       fclose(json);
-      return;
+      return object;
     }
     if (c == '{') {
       skip_ws(json);
@@ -259,7 +258,7 @@ struct ObjectInfo read_scene(FILE* json) {
   	skip_ws(json);
         } else if (c == ']') {
   	fclose(json);
-  	return;
+  	return object;
         } else {
   	fprintf(stderr, "Error: Expecting ',' or ']' on line %d.\n", line);
   	exit(1);
@@ -273,6 +272,7 @@ static inline double sqr(double v) {
 }
 
 
+
 static inline void normalize(double* v) {
   double len = sqrt(sqr(v[0]) + sqr(v[1]) + sqr(v[2]));
   v[0] /= len;
@@ -280,7 +280,12 @@ static inline void normalize(double* v) {
   v[2] /= len;
 }
 
+void shade_pixel(double *color, int row, int col, )
 
+
+
+
+/*
 double cylinder_intersection(double* Ro, double* Rd,
 			     double* C, double r) {
   // Step 1. Find the equation for the object you are
@@ -339,14 +344,14 @@ double cylinder_intersection(double* Ro, double* Rd,
   if (t1 > 0) return t1;
 
   return -1;
-}
-
+}ObjectInfo
+*/
 int main(int argc, char** argv) {
   if (argc != 5){
     fprintf(stderr, "Usage: raycast width height input.json output.ppm");
     return(1);
   }
-
+  //TODO ERROR CHECKING MOTHERFUCKER
   FILE* json = fopen(argv[3], "rb");
 
   if (json == NULL) {
@@ -354,9 +359,45 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  read_scene(json);
+  //create object?
+  int camerakind = 0;
+  double cameraheight;
+  double camerawidth;
 
+  int spherekind = 1;
+  double spherecolorR, spherecolorG, spherecolorB;
+  double sphereposX, sphereposY, sphereposZ;
+  double radius;
 
+  int planekind = 2;
+  double planecolorR, planecolorG, planecolorB;
+  double planeposX, planeposY, planeposZ;
+  double planenormX, planenormY, planenormZ;
+
+  int M = atoi(argv[1]);
+  int N = atoi(argv[2]);
+
+  ObjectInfo object;
+  object = read_scene(json);
+
+  objectsnumber = object.objectnumber;
+
+  int i;
+
+  int ppmmagicnumber=6;
+
+  for (i = 0; i < objectsnumber; i++){
+    if (object.objectArray[i].camera.width && objectArray[1].camera.height) {
+      camerawidth = object.objectArray[i].camera.width;
+      cameraheight = object.objectArray[i].camera.height;
+    }
+  }
+
+  if(!camerawidth || !cameraheight){
+    fprintf(stderr, "Error: invalid camera width/height");
+    exit(1);
+  }
+/*
   Object** objects;
   objects = malloc(sizeof(Object*)*2);
   objects[0] = malloc(sizeof(Object));
@@ -418,5 +459,5 @@ int main(int argc, char** argv) {
     printf("\n");
   }
 
-  return 0;
+*/  return 0;
 }
