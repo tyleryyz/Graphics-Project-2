@@ -421,6 +421,14 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Usage: raycast width height input.json output.ppm");
     return(1);
   }
+
+  if (atoi(argv[1]) <= 0){
+    fprintf(stderr, "error: width must be greater than 0");
+  }
+  if (atoi(argv[2]) <= 0){
+    fprintf(stderr, "error: height must be greater than 0");
+  }
+  
   FILE* json = fopen(argv[3], "rb");
 
   if (json == NULL) {
@@ -438,14 +446,10 @@ int main(int argc, char *argv[]) {
   double camerawidth;
 
 
-  double spherecolorR, spherecolorG, spherecolorB;
-  double sphereposX, sphereposY, sphereposZ;
+
   double radius;
 
 
-  double planecolorR, planecolorG, planecolorB;
-  double planeposX, planeposY, planeposZ;
-  double planenormX, planenormY, planenormZ;
 
   int M = atoi(argv[1]);
   int N = atoi(argv[2]);
