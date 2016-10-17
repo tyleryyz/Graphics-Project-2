@@ -248,6 +248,12 @@ struct ObjectInfo read_scene(FILE* json) {
             object.objectArray[object.objectNumber-1].sphere.position[1]=value[1];
             object.objectArray[object.objectNumber-1].sphere.position[2]=value[2];
           }
+          else if((strcmp(key, "position")==0) &&
+          ((strcmp(object.objectArray[object.objectNumber-1].type, "plane")==0))){
+            object.objectArray[object.objectNumber-1].plane.position[0]=value[0];
+            object.objectArray[object.objectNumber-1].plane.position[1]=value[1];
+            object.objectArray[object.objectNumber-1].plane.position[2]=value[2];
+          }
           else if((strcmp(key, "normal")==0) && (strcmp(object.objectArray[object.objectNumber-1].type, "plane")==0)){
             object.objectArray[object.objectNumber-1].plane.normal[0]=value[0];
             object.objectArray[object.objectNumber-1].plane.normal[1]=value[1];
@@ -330,7 +336,7 @@ void ppmprint(ImageData *image, FILE* outputfile, int ppmmagicnumber){
     int i;
     for(i=0; i<imagesize; i++){
       char c = image->color[i];
-      if(i%4 !=0){
+      if(i%4 !=3){
         fwrite(&c, 1, 1, outputfile);
       }
     }
