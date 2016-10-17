@@ -23,11 +23,12 @@ typedef struct {
   };
 } Object;
 
+/*
 typedef struct {
   double origin[3];
   double dir[3];
 }ray;
-
+*/
 
 
 typedef struct ObjectInfo{
@@ -35,13 +36,15 @@ typedef struct ObjectInfo{
   size_t objectNumber;
 } ObjectInfo;
 
+struct ObjectInfo read_scene(FILE* json);
+
 typedef struct ImageData{
   double width;
   double height;
   char* color;
 }ImageData;
 
-struct ObjectInfo read_scene(FILE* json);
+
 
 int line = 1;
 
@@ -169,8 +172,8 @@ struct ObjectInfo read_scene(FILE* json) {
       // Parse the object
       char* key = next_string(json);
       if (strcmp(key, "type") != 0) {
-	       fprintf(stderr, "Error: Expected \"type\" key on line number %d.\n", line);
-	        exit(1);
+        fprintf(stderr, "Error: Expected \"type\" key on line number %d.\n", line);
+        exit(1);
       }
 
       skip_ws(json);
@@ -188,8 +191,8 @@ struct ObjectInfo read_scene(FILE* json) {
       } else if (strcmp(value, "sphere") == 0) {
       } else if (strcmp(value, "plane") == 0) {
       } else {
-	       fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
-	        exit(1);
+        fprintf(stderr, "Error: Unknown type, \"%s\", on line number %d.\n", value, line);
+        exit(1);
       }
 
       skip_ws(json);
@@ -231,25 +234,28 @@ struct ObjectInfo read_scene(FILE* json) {
        else if ((strcmp(key, "color")==0)||(strcmp(key, "position")==0)||(strcmp(key, "normal")==0)){
           double* value = next_vector(json);
 
-          if((strcmp(key, "color")==0)){
+          if((strcmp(key, "color")==0) &&
+          ((strcmp(object.objectArray[object.objectNumber-1].type, "sphere")==0) ||
+          (strcmp(object.objectArray[object.objectNumber-1].type, "plane") ==0))){
             object.objectArray[object.objectNumber-1].color[0]=value[0];
             object.objectArray[object.objectNumber-1].color[1]=value[1];
             object.objectArray[object.objectNumber-1].color[2]=value[2];
           }
-          else if((strcmp(key, "position")==0)){
+          else if((strcmp(key, "position")==0) &&
+          ((strcmp(object.objectArray[object.objectNumber-1].type, "sphere") == 0) ||
+          (strcmp(object.objectArray[object.objectNumber-1].type, "plane")==0))){
             object.objectArray[object.objectNumber-1].sphere.position[0]=value[0];
             object.objectArray[object.objectNumber-1].sphere.position[1]=value[1];
             object.objectArray[object.objectNumber-1].sphere.position[2]=value[2];
           }
-          else if((strcmp(key, "normal")==0)){
+          else if((strcmp(key, "normal")==0) && (strcmp(object.objectArray[object.objectNumber-1].type, "plane")==0)){
             object.objectArray[object.objectNumber-1].plane.normal[0]=value[0];
             object.objectArray[object.objectNumber-1].plane.normal[1]=value[1];
             object.objectArray[object.objectNumber-1].plane.normal[2]=value[2];
           }
        }
       else {
-  	    fprintf(stderr, "Error: Unknown property, \"%s\", on line %d.\n",
-  		    key, line);
+  	    fprintf(stderr, "Error: Unknown property, \"%s\", on line %d.\n", key, line);
   	    //char* value = next_string(json);
   	  }
   	  skip_ws(json);
@@ -288,9 +294,10 @@ static void normalize(double* v) {
 }
 
 void shade_pixel(double *color, int row, int col, ImageData *image){
-  image->color[(int)(row*image->width*3 + col*3)] = (char)(color[0]*255);
-  image->color[(int)(row*image->width*3 + col*3+1)] = (char)(color[1]*255);
-  image->color[(int)(row*image->width*3 + col*3+2)] = (char)(color[2]*255);
+  image->color[(int)(row*image->width*4 + col*4)] = (char)(color[0]*255);
+  image->color[(int)(row*image->width*4 + col*4+1)] = (char)(color[1]*255);
+  image->color[(int)(row*image->width*4 + col*4+2)] = (char)(color[2]*255);
+  image->color[(int)(row*image->width*4 + col*4+3)] = 255;
 }
 
 double planeintersection(double* Ro, double* Rd, double* position, double* normal){
@@ -316,14 +323,14 @@ double planeintersection(double* Ro, double* Rd, double* position, double* norma
 
 void ppmprint(ImageData *image, FILE* outputfile, int ppmmagicnumber){
   size_t number;
-  
-  int imagesize = image->width*image->height*3;
+
+  int imagesize = image->width*image->height*4;
   if (ppmmagicnumber == 6){
-    fprintf(outputfile, "P%d\n%lf %lf\n%d\n", ppmmagicnumber, image->width, image->height, 255);
+    fprintf(outputfile, "P%i\n%i %i\n%i\n", ppmmagicnumber, (int)(image->width), (int)(image->height), 255);
     int i;
     for(i=0; i<imagesize; i++){
       char c = image->color[i];
-      if(i%3 !=0){
+      if(i%4 !=0){
         fwrite(&c, 1, 1, outputfile);
       }
     }
@@ -348,7 +355,7 @@ double sphereintersection(double* Ro, double* Rd, double* C, double radius){
     return t1;
   }
   double t2 = (-secval + det)/(2*val);
-  if (t1 >0){
+  if (t2 >0){
     return t2;
   }
   return -1;
@@ -446,11 +453,7 @@ int main(int argc, char *argv[]) {
   double cameraheight;
   double camerawidth;
 
-
-
   double radius;
-
-
 
   int M = atoi(argv[1]);
   int N = atoi(argv[2]);
@@ -482,7 +485,7 @@ int main(int argc, char *argv[]) {
   ImageData *image = (ImageData *)malloc(sizeof(ImageData));
   image->height = N;
   image->width = M;
-  image->color = (char *)malloc(sizeof(char) * image->height * image->width * 4);
+  image->color = (char*)malloc(sizeof(char) * image->height * image->width * 4);
 
   int y;
   int x;
@@ -493,7 +496,7 @@ int main(int argc, char *argv[]) {
       double Rd[3] = {object.objectArray[i].sphere.position[0] -
         (camerawidth/2) + pixelwidth * (x + 0.5),
         object.objectArray[i].sphere.position[1] -
-        (cameraheight/2) + pixelheight * (y+0.5), 1};
+        (cameraheight/2) + pixelheight * (y + 0.5), 1};
       normalize(Rd);
 
       int helper = 0;
@@ -532,4 +535,5 @@ int main(int argc, char *argv[]) {
       FILE* output = fopen(argv[4], "w+");
 
       ppmprint(image, output, ppmmagicnumber);
+      return 0;
 }
